@@ -1,0 +1,54 @@
+pg_db_size_bytes:
+  query: "SELECT pg_database_size(current_database()) AS bytes"
+  metrics:
+    - bytes:
+        usage: "GAUGE"
+        description: "Current database size in bytes"
+
+pg_db_size_bytes_by_name:
+  query: |
+    SELECT datname AS db, pg_database_size(datname) AS bytes
+    FROM pg_database
+  metrics:
+    - db:
+        usage: "LABEL"
+        description: "Database name"
+    - bytes:
+        usage: "GAUGE"
+        description: "Database size in bytes"
+pg_user_tables_count:
+  query: |
+    SELECT count(*) AS tables
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relkind IN ('r','p','m')               -- r=table, p=partitioned table, m=materialized view
+      AND n.nspname NOT IN ('pg_catalog','information_schema')
+  metrics:
+    - tables:
+        usage: "GAUGE"
+        description: "Number of user tables in current DB"
+
+pg_user_tables_count_by_schema:
+  query: |
+    SELECT n.nspname AS schema, count(*) AS tables
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relkind IN ('r','p','m')
+      AND n.nspname NOT IN ('pg_catalog','information_schema')
+    GROUP BY n.nspname
+  metrics:
+    - schema:
+        usage: "LABEL"
+    - tables:
+        usage: "GAUGE"
+        description: "User tables per schema"
+
+pg_user_tables_rows:
+  query: |
+    SELECT COALESCE(SUM(n_live_tup + n_dead_tup),0) AS rows
+    FROM pg_stat_user_tables
+  metrics:
+    - rows:
+        usage: "GAUGE"
+        description: "Total rows (live+dead) across user tables"
+
